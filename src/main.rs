@@ -41,12 +41,14 @@ struct Cli {
 
 #[derive(ValueEnum, Clone)]
 enum OutputMode {
-    /// Colored block bar + percentage (default)
+    /// Colored braille bar + percentage with ANSI colors (default)
     Bar,
     /// Raw token count
     Tokens,
     /// Percentage (0-100)
     Percent,
+    /// Braille bar + percentage with tmux #[fg=...] color format
+    Tmux,
 }
 
 #[derive(Deserialize, Debug)]
@@ -186,6 +188,28 @@ fn render_bar(pct: u64) -> String {
     format!("{}{}{} {}%", color, bar, reset, pct)
 }
 
+fn render_bar_tmux(pct: u64) -> String {
+    let total_steps = BAR_WIDTH * 8;
+    let filled_steps = ((pct as f64 / 100.0) * total_steps as f64).round() as usize;
+    let filled_steps = filled_steps.min(total_steps);
+
+    let mut bar = String::with_capacity(BAR_WIDTH * 4);
+    for i in 0..BAR_WIDTH {
+        let cell_filled = filled_steps.saturating_sub(i * 8).min(8);
+        bar.push(BRAILLE_STEPS[cell_filled]);
+    }
+
+    let color = if pct >= 85 {
+        "colour196" // red
+    } else if pct >= 70 {
+        "colour220" // yellow
+    } else {
+        "colour82"  // green
+    };
+
+    format!("#[fg={}]{} {}%#[fg=default]", color, bar, pct)
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -220,5 +244,6 @@ fn main() {
         OutputMode::Tokens => println!("{}", info.used_tokens),
         OutputMode::Percent => println!("{}", pct),
         OutputMode::Bar => println!("{}", render_bar(pct)),
+        OutputMode::Tmux => println!("{}", render_bar_tmux(pct)),
     }
 }
