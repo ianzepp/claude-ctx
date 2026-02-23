@@ -145,10 +145,34 @@ fn read_transcript(transcript: &Path, context_size_override: Option<u64>) -> Opt
     Some(ContextInfo { used_tokens, context_size })
 }
 
+// Braille snake-fill glyphs: 8 sub-steps per character cell.
+// Snake pattern: left column bottom-up (dots 7,6,5,4), then right column top-down (dots 1,2,3,8).
+// step 0 = empty (rendered as ─), step 8 = full (rendered as █)
+const BRAILLE_STEPS: [char; 9] = [
+    '─',  // 0 - empty
+    '⡀',  // 1 - left col, row 4
+    '⡄',  // 2 - left col, rows 3-4
+    '⡆',  // 3 - left col, rows 2-4
+    '⡇',  // 4 - left col, all rows
+    '⣇',  // 5 - left full + right row 1
+    '⣧',  // 6 - left full + right rows 1-2
+    '⣷',  // 7 - left full + right rows 1-3
+    '█',  // 8 - full block
+];
+
+const BAR_WIDTH: usize = 10;
+
 fn render_bar(pct: u64) -> String {
-    let filled = ((pct as f64 / 100.0) * 10.0).round() as usize;
-    let filled = filled.min(10);
-    let bar = format!("{}{}", "█".repeat(filled), "░".repeat(10 - filled));
+    // Total sub-steps across the bar
+    let total_steps = BAR_WIDTH * 8;
+    let filled_steps = ((pct as f64 / 100.0) * total_steps as f64).round() as usize;
+    let filled_steps = filled_steps.min(total_steps);
+
+    let mut bar = String::with_capacity(BAR_WIDTH * 4);
+    for i in 0..BAR_WIDTH {
+        let cell_filled = filled_steps.saturating_sub(i * 8).min(8);
+        bar.push(BRAILLE_STEPS[cell_filled]);
+    }
 
     let color = if pct >= 85 {
         "\x1b[31m" // red
