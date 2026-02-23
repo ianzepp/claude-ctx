@@ -200,11 +200,11 @@ fn render_bar_tmux(pct: u64) -> String {
     }
 
     let color = if pct >= 85 {
-        "colour196" // red
+        "colour167" // muted brick red
     } else if pct >= 70 {
-        "colour220" // yellow
+        "colour136" // muted amber
     } else {
-        "colour82"  // green
+        "colour71"  // muted sage green
     };
 
     format!("#[fg={}]{} {}%#[fg=default]", color, bar, pct)
